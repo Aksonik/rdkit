@@ -50,7 +50,7 @@ rdkit_library(FileParsers
               SmilesMolSupplier.cpp SmilesWriter.cpp
               TDTMolSupplier.cpp TDTWriter.cpp
               TplFileParser.cpp TplFileWriter.cpp
-              PDBParser.cpp PDBWriter.cpp PDBSupplier.cpp
+              PDBParser.cpp PDBWriter.cpp PDBSupplier.cpp HINParser.cpp
               CMLWriter.cpp XYZFileWriter.cpp XYZFileParser.cpp
               ${maesupplier}
               ProximityBonds.cpp
