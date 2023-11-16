@@ -241,6 +241,7 @@ ROMol *MolFromMol2Block(std::string mol2Block, bool sanitize = true,
 
 ROMol *MolFromPDBFile(const char *filename, bool sanitize, bool removeHs,
                       unsigned int flavor, bool proximityBonding) {
+
   RWMol *newM = nullptr;
   try {
     newM = PDBFileToMol(filename, sanitize, removeHs, flavor, proximityBonding);
@@ -253,6 +254,28 @@ ROMol *MolFromPDBFile(const char *filename, bool sanitize, bool removeHs,
   }
   return static_cast<ROMol *>(newM);
 }
+
+
+
+/* Nawrocki: Reading HIN files. */
+
+ROMol *MolFromHINFile(const char *filename, bool sanitize, bool removeHs,
+                      unsigned int flavor, bool proximityBonding) {
+
+  RWMol *newM = nullptr;
+  try {
+    newM = HINFileToMol(filename, sanitize, removeHs, flavor, proximityBonding);
+  } catch (RDKit::BadFileException &e) {
+    PyErr_SetString(PyExc_IOError, e.what());
+    throw python::error_already_set();
+  } catch (RDKit::FileParseException &e) {
+    BOOST_LOG(rdWarningLog) << e.what() << std::endl;
+  } catch (...) {
+  }
+  return static_cast<ROMol *>(newM);
+}
+
+
 
 ROMol *MolFromPDBBlock(python::object molBlock, bool sanitize, bool removeHs,
                        unsigned int flavor, bool proximityBonding) {
@@ -1748,6 +1771,27 @@ BOOST_PYTHON_MODULE(rdmolfiles) {
                python::arg("writeFirstConfTwice") = false),
               docString.c_str());
 
+
+
+
+/* Nawrocki: Reading HIN files. */
+
+  docString =
+      "Construct a molecule from a HIN file.\n\n\
+  ARGUMENTS:\n\
+\n\
+    - fileName: name of the file to read\n\
+\n";
+
+  python::def("MolFromHINFile", RDKit::MolFromHINFile,
+              (python::arg("molFileName"), python::arg("sanitize") = true,
+               python::arg("removeHs") = true, python::arg("flavor") = 0,
+               python::arg("proximityBonding") = true),
+              docString.c_str(),
+              python::return_value_policy<python::manage_new_object>());
+
+
+
   docString =
       "Construct a molecule from a PDB file.\n\n\
   ARGUMENTS:\n\
@@ -1769,6 +1813,7 @@ BOOST_PYTHON_MODULE(rdmolfiles) {
 \n\
     a Mol object, None on failure.\n\
 \n";
+
   python::def("MolFromPDBFile", RDKit::MolFromPDBFile,
               (python::arg("molFileName"), python::arg("sanitize") = true,
                python::arg("removeHs") = true, python::arg("flavor") = 0,
@@ -1797,6 +1842,7 @@ BOOST_PYTHON_MODULE(rdmolfiles) {
 \n\
     a Mol object, None on failure.\n\
 \n";
+
   python::def("MolFromPDBBlock", RDKit::MolFromPDBBlock,
               (python::arg("molBlock"), python::arg("sanitize") = true,
                python::arg("removeHs") = true, python::arg("flavor") = 0,

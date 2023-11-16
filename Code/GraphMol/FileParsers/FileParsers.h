@@ -333,6 +333,15 @@ RDKIT_FILEPARSERS_EXPORT RWMol *PDBFileToMol(const std::string &fname,
  *         flavor & 16 : Write MASTER record
  *         flavor & 32 : Write TER record
  */
+
+/* Nawrocki: Reading HIN files. */
+
+RDKIT_FILEPARSERS_EXPORT RWMol *HINFileToMol(const std::string &fname,
+                                             bool sanitize = true,
+                                             bool removeHs = true,
+                                             unsigned int flavor = 0,
+                                             bool proximityBonding = true);
+
 RDKIT_FILEPARSERS_EXPORT std::string MolToPDBBlock(const ROMol &mol,
                                                    int confId = -1,
                                                    unsigned int flavor = 0);
