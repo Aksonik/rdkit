@@ -283,8 +283,14 @@ unsigned int Atom::getTotalNumHs(bool includeNeighbors) const {
   return res;
 }
 
+/* Nawrocki: reading HIN files. */
+
+/* If not commented out as below :
+   Failed Expression: d_implicitValence > -1
+*/
+
 unsigned int Atom::getNumImplicitHs() const {
-  if (df_noImplicit) {
+/*  if (df_noImplicit) {
     return 0;
   }
 
@@ -292,6 +298,8 @@ unsigned int Atom::getNumImplicitHs() const {
                "getNumImplicitHs() called without preceding call to "
                "calcImplicitValence()");
   return getImplicitValence();
+*/
+return 0;
 }
 
 int Atom::getExplicitValence() const {
