@@ -1,4 +1,20 @@
 # RDKit
+
+#### Branch: reading-HIN-format
+
+It has an additional function to read a molecule written in a HIN format.
+It is coded in a similar way as Chem.rdmolfiles.MolFromPDBFile to read PDB file.
+
+import rdkit
+print(rdkit.__version__)
+
+from rdkit import Chem
+from rdkit.Chem import Descriptors
+
+mol=Chem.rdmolfiles.MolFromHINFile("Ethane.hin")
+mass=Descriptors.MolWt(mol)
+print(mass)
+
 [![Azure build Status](https://dev.azure.com/rdkit-builds/RDKit/_apis/build/status/rdkit.rdkit?branchName=master)](https://dev.azure.com/rdkit-builds/RDKit/_build/latest?definitionId=1&branchName=master)
 [![Documentation Status](https://readthedocs.org/projects/rdkit/badge/?version=latest)](http://rdkit.readthedocs.org/en/latest/)
 [![DOI](https://zenodo.org/badge/10009991.svg)](https://zenodo.org/badge/latestdoi/10009991)
