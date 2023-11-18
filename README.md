@@ -18,7 +18,7 @@ print(mass)
 print(mol.GetNumAtoms())
 
 for conf in mol.GetConformers():  
-  print(conf.GetPositions())
+     print(conf.GetPositions())
 
 [![Azure build Status](https://dev.azure.com/rdkit-builds/RDKit/_apis/build/status/rdkit.rdkit?branchName=master)](https://dev.azure.com/rdkit-builds/RDKit/_build/latest?definitionId=1&branchName=master)
 [![Documentation Status](https://readthedocs.org/projects/rdkit/badge/?version=latest)](http://rdkit.readthedocs.org/en/latest/)
