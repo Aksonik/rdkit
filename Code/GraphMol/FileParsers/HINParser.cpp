@@ -65,6 +65,39 @@ void HINAtomLine(RWMol *mol, const char *ptr, unsigned int len,
   printf("Symbol: %s\n",symb);
   atom = HINAtomFromSymbol(symb);
   mol->addAtom(atom, true, true);
+
+  if (len >= 39) {
+    RDGeom::Point3D pos;
+    try {
+      pos.x = FileParserUtils::toDouble(std::string(ptr + 29, 11));
+      if (len >= 51) {
+        pos.y = FileParserUtils::toDouble(std::string(ptr + 41, 11));
+      }
+      if (len >= 53) {
+        pos.z = FileParserUtils::toDouble(std::string(ptr + 53, 11));
+      }
+    } catch (boost::bad_lexical_cast &) {
+      std::ostringstream errout;
+      errout << "Problem with coordinates for HIN atom #"; //<< serialno;
+      throw FileParseException(errout.str());
+    }
+
+    Conformer *conf;
+    if (!mol->getNumConformers()) {
+      conf = new RDKit::Conformer(mol->getNumAtoms());
+      conf->set3D(pos.z != 0.0);
+      conf->setId(0);
+      mol->addConformer(conf, false);
+    } else {
+      conf = &mol->getConformer();
+      if (pos.z != 0.0) {
+        conf->set3D(true);
+      }
+    }
+    printf("Coor: %f %f %f\n",pos.x,pos.y,pos.z);
+    conf->setAtomPos(atom->getIdx(), pos);
+  }
+
                  }
 
 void parseHINBlock(RWMol *&mol, const char *str, bool sanitize, bool removeHs,
