@@ -347,9 +347,12 @@ void PDBBondLine(RWMol *mol, const char *ptr, unsigned int len,
         fail = true;
       }
 
+      printf("Bond: %i-%i\n",src,dst);
+
       if (!fail) {
+        printf("Bond - fail: %d\n", static_cast<int>(fail));
         Bond *bond =
-            mol->getBondBetweenAtoms(amap[src]->getIdx(), amap[dst]->getIdx());
+            mol->getBondBetweenAtoms(amap[src]->getIdx(),amap[dst]->getIdx());
         if (bond && bond->getBondType() != Bond::ZERO) {
           // Here we use a single byte bitmap to count duplicates
           // Low nibble counts src < dst, high nibble for src > dst
@@ -392,6 +395,7 @@ void PDBBondLine(RWMol *mol, const char *ptr, unsigned int len,
         } else if (!bond) {
           // Bonds in PDB file are explicit
           // if they are not sanitize friendly, set their order to zero
+        printf("Bonds - set ZERO/SINGLE\n");
           if (IsBlacklistedPair(amap[src], amap[dst])) {
             bond = new Bond(Bond::ZERO);
           } else {

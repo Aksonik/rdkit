@@ -23,6 +23,10 @@ from rdkit.Chem.rdCIPLabeler import *
 from rdkit.Chem.rdmolfiles import *
 from rdkit.Chem.rdmolops import *
 
+# Nawrocki: reading HIN files.
+
+print("Yes, this is my compiled RDKit version!")
+
 try:
   # This is an optional component of the build
   from rdkit.Chem.rdMolInterchange import *
@@ -122,6 +126,8 @@ def SupplierFromFilename(fileN, delim='', **kwargs):
   ext = fileN.split('.')[-1].lower()
   if ext == 'sdf':
     suppl = SDMolSupplier(fileN, **kwargs)
+  elif ext == 'hin':
+    suppl = HINMolSupplier(fileN, **kwargs)
   elif ext == 'csv':
     if not delim:
       delim = ','
