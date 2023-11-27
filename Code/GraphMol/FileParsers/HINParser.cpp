@@ -120,8 +120,12 @@ void HINAtomLine(RWMol *mol, const char *ptr, unsigned int len,
     conf->setAtomPos(atom->getIdx(), pos);
   }
 
-  if (len >= 79) {
-    int charge = 0;
+  printf("Len: %i\n",len);
+  if (len >= 0) {
+    double charge = 0.000;
+    charge=FileParserUtils::toDouble(std::string(ptr + 22, 6));
+
+/*
     if (ptr[78] >= '1' && ptr[78] <= '9') {
       if (ptr[79] == '-') {
         charge = -(ptr[78] - '0');
@@ -153,8 +157,10 @@ void HINAtomLine(RWMol *mol, const char *ptr, unsigned int len,
         charge = -1;
       }
     }
+*/
     if (charge != 0) {
       atom->setFormalCharge(charge);
+      printf("Formal charge: %f\n",charge);
     }
   }
 
