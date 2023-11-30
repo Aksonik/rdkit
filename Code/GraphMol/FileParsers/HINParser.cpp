@@ -73,6 +73,49 @@ void HINAtomLine(RWMol *mol, const char *ptr, unsigned int len,
   Atom *atom = (Atom *)nullptr;
   char symb[3];
 
+  /* The HIN format is flexible, i.e. matters order of columns, not their exact postion.
+     Let's check which colum starts where. */
+
+  std::string currstr=" ";
+  std::string prevstr=" ";
+  int colnum=0;
+  int colarr[35][1]={0};
+
+  std::cout << std::string(ptr,len) << std::endl;
+
+  for (int charnum=0; charnum<len; charnum+=1){
+    currstr=std::string(ptr+charnum,1);
+    if(charnum>0){
+      prevstr=std::string(ptr+charnum-1,1);
+    }
+    if((prevstr==" ") & (currstr!=" ")){
+      colnum+=1;
+      colarr[colnum][0]=charnum;
+    }
+    else if((prevstr!=" ") & (currstr==" ")){
+      colarr[colnum][1]=charnum-1;
+      std::cout << "column " << colnum << " starts " << colarr[colnum][0] << " ends " << colarr[colnum][1] << std::endl;
+    }
+  }
+
+  /*
+     column:
+     1  - keyword, e.g. atom
+     2  - index (starts with 1)
+     3  - label
+     4  - element, e.g. C
+     5  - type (according to a FF)
+     6  - flat, e.g. h for heteroatom
+     7  - partial charge
+     8  - x
+     9  - y
+     10 - z
+     11 - number of bonds
+     12 - index of a bonded atom
+     13 - bond type (s, d, t, a)
+     etc.
+  */
+
   symb[0] = ptr[12];
   //printf("Symbol: %s\n",symb);
   atom = HINAtomFromSymbol(symb);
@@ -87,15 +130,15 @@ void HINAtomLine(RWMol *mol, const char *ptr, unsigned int len,
   amap[serialno] = atom;
   printf("Atom serial number: %i\n",serialno);
 
-  if (len >= 39) {
+  if (len >= colarr[8][1]) {
     RDGeom::Point3D pos;
     try {
-      pos.x = FileParserUtils::toDouble(std::string(ptr + 29, 11));
-      if (len >= 51) {
-        pos.y = FileParserUtils::toDouble(std::string(ptr + 41, 11));
+      pos.x = FileParserUtils::toDouble(std::string(ptr + colarr[8][0], colarr[8][1]-colarr[8][0]));
+      if (len >= colarr[9][1]) {
+        pos.y = FileParserUtils::toDouble(std::string(ptr + colarr[9][0], colarr[9][1]-colarr[9][0]));
       }
-      if (len >= 53) {
-        pos.z = FileParserUtils::toDouble(std::string(ptr + 53, 11));
+      if (len >= colarr[10][1]) {
+        pos.z = FileParserUtils::toDouble(std::string(ptr + colarr[10][0], colarr[10][1]-colarr[10][0]));
       }
     } catch (boost::bad_lexical_cast &) {
       std::ostringstream errout;
@@ -259,7 +302,7 @@ void PDBBondLine(RWMol *mol, const char *ptr, unsigned int len,
         } else if (!bond) {
           // Bonds in PDB file are explicit
           // if they are not sanitize friendly, set their order to zero
-        printf("Bonds - set ZERO/SINGLE\n");
+        printf("Bonds - set ZERO or SINGLE\n");
           if (IsBlacklistedPair(amap[src], amap[dst])) {
             bond = new Bond(Bond::ZERO);
           } else {
