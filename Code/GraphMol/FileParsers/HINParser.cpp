@@ -29,12 +29,18 @@
 // flavor & 1 : Ignore atoms in alternate conformations and dummy atoms
 // flavor & 2 : Read each MODEL into a separate molecule.
 
-
-/* Nawrocki: Reading HIN files. */
+/* Parsing HIN files by Grzegorz Nawrocki. */
 
 namespace RDKit {
 
 namespace {
+
+    /* pairBondType - an atom pairwise array (atom numbers from zero) for storing bond types. */
+
+    const int rows=100;
+    const int cols=100;
+
+    std::vector<std::vector<std::string>> pairBondType(rows, std::vector<std::string>(cols));
 
 constexpr int BCNAM(char A, char B, char C) { return (A << 16) | (B << 8) | C; }
 
@@ -73,27 +79,28 @@ void HINAtomLine(RWMol *mol, const char *ptr, unsigned int len,
   Atom *atom = (Atom *)nullptr;
   char symb[3];
 
-  /* The HIN format is flexible, i.e. matters order of columns, not their exact postion.
+  /* The HIN format is flexible, i.e. order of columns matters, not their exact postion.
      Let's check which colum starts where. */
 
   std::string currstr=" ";
   std::string prevstr=" ";
   int colnum=0;
-  int colarr[35][1]={0};
+  int colarr[35][2]={0};
 
-  std::cout << std::string(ptr,len) << std::endl;
+  std::cout << "Parse HIN line: " << std::string(ptr,len) << std::endl;
 
   for (int charnum=0; charnum<len; charnum+=1){
     currstr=std::string(ptr+charnum,1);
     if(charnum>0){
       prevstr=std::string(ptr+charnum-1,1);
     }
+
     if((prevstr==" ") & (currstr!=" ")){
       colnum+=1;
       colarr[colnum][0]=charnum;
     }
     else if((prevstr!=" ") & (currstr==" ")){
-      colarr[colnum][1]=charnum-1;
+      colarr[colnum][1]=charnum;
       std::cout << "column " << colnum << " starts " << colarr[colnum][0] << " ends " << colarr[colnum][1] << std::endl;
     }
   }
@@ -116,8 +123,17 @@ void HINAtomLine(RWMol *mol, const char *ptr, unsigned int len,
      etc.
   */
 
-  symb[0] = ptr[12];
-  //printf("Symbol: %s\n",symb);
+  if(ptr[colarr[4][0]]>='A' && ptr[colarr[4][0]]<='Z'){
+    symb[0]=ptr[colarr[4][0]];
+    if(ptr[colarr[4][0]+1]>='a' && ptr[colarr[4][0]+1]<='z'){
+      symb[1]=ptr[colarr[4][0]+1];
+      symb[2]='\0';
+    }
+    else{
+      symb[1]='\0';
+    }
+  }
+  printf("Symbol: %s\n",symb);
   atom = HINAtomFromSymbol(symb);
 
   if (!atom) {
@@ -159,55 +175,40 @@ void HINAtomLine(RWMol *mol, const char *ptr, unsigned int len,
       }
     }
     printf("Coor: %f %f %f\n",pos.x,pos.y,pos.z);
-    printf("NDX: %i\n",atom->getIdx());
+    printf("Index: %i\n",atom->getIdx());
     conf->setAtomPos(atom->getIdx(), pos);
   }
 
   printf("Len: %i\n",len);
   if (len >= 0) {
     double charge = 0.000;
-    charge=FileParserUtils::toDouble(std::string(ptr + 22, 6));
+    charge=FileParserUtils::toDouble(std::string(ptr + colarr[7][0], colarr[7][1]-colarr[7][0]));
 
-/*
-    if (ptr[78] >= '1' && ptr[78] <= '9') {
-      if (ptr[79] == '-') {
-        charge = -(ptr[78] - '0');
-      } else if (ptr[79] == '+' || ptr[79] == ' ' || !ptr[79]) {
-        charge = ptr[78] - '0';
-      }
-    } else if (ptr[78] == '+') {
-      if (ptr[79] >= '1' && ptr[79] <= '9') {
-        charge = ptr[79] - '0';
-      } else if (ptr[79] == '+') {
-        charge = 2;
-      } else if (ptr[79] != '0') {
-        charge = 1;
-      }
-    } else if (ptr[78] == '-') {
-      if (ptr[79] >= '1' && ptr[79] <= '9') {
-        charge = ptr[79] - '0';
-      } else if (ptr[79] == '-') {
-        charge = -2;
-      } else if (ptr[79] != '0') {
-        charge = -1;
-      }
-    } else if (ptr[78] == ' ') {
-      if (ptr[79] >= '1' && ptr[79] <= '9') {
-        charge = ptr[79] - '0';
-      } else if (ptr[79] == '+') {
-        charge = 1;
-      } else if (ptr[79] == '-') {
-        charge = -1;
-      }
-    }
-*/
     if (charge != 0) {
       atom->setFormalCharge(charge);
       printf("Formal charge: %f\n",charge);
     }
   }
 
-  tmp = std::string(ptr + 12, 4);
+  int bondNum=std::stoi(std::string(ptr+colarr[11][0],1));
+  std::cout << "Number of bonds: " << bondNum << std::endl;
+
+  int atomA=std::stoi(std::string(ptr+colarr[2][0],colarr[2][1]-colarr[2][0]));
+  int atomB=0;
+
+  for (int atomBndx=12;atomBndx<12+2*bondNum;atomBndx+=2){
+    int atomB=std::stoi(std::string(ptr+colarr[atomBndx][0],colarr[atomBndx][1]-colarr[atomBndx][0]));
+
+    std::string bondABType=std::string(ptr+colarr[atomBndx+1][0],colarr[atomBndx+1][1]-colarr[atomBndx+1][0]);
+    char bondABTypeChar=bondABType[0];
+
+    std::cout << "Bond type: " << atomA << "-" << atomB << " " << bondABType << std::endl;
+
+    pairBondType[atomA-1][atomB-1]=bondABTypeChar;
+  }
+
+  tmp=std::string(ptr+colarr[5][0],colarr[5][1]-colarr[5][0]);
+  std::cout << "Atom type: " << tmp << std::endl;
   AtomPDBResidueInfo *info = new AtomPDBResidueInfo(tmp, serialno);
   atom->setMonomerInfo(info);
 
@@ -218,114 +219,41 @@ void PDBBondLine(RWMol *mol, const char *ptr, unsigned int len,
   PRECONDITION(mol, "bad mol");
   PRECONDITION(ptr, "bad char ptr");
 
-  printf("Nawrocki: PDBBondLine! %i\n",len);
-
-  if (len < 16) {
-    return;
-  }
-
-  std::string tmp(ptr + 6, 5);
-  bool fail = false;
-  int src, dst;
-
-  try {
-    src = FileParserUtils::toInt(tmp);
-    if (amap.find(src) == amap.end()) {
-      return;
-    }
-  } catch (boost::bad_lexical_cast &) {
-    fail = true;
-  }
-
-  if (!fail) {
-    if (len > 41) {
-      len = 41;
-    }
-    for (unsigned int pos = 11; pos + 5 <= len; pos += 5) {
-      if (!memcmp(ptr + pos, "     ", 5)) {
-        break;
-      }
-      try {
-        dst = FileParserUtils::toInt(std::string(ptr + pos, 5));
-        if (dst == src || amap.find(dst) == amap.end()) {
-          continue;
-        }
-      } catch (boost::bad_lexical_cast &) {
-        fail = true;
-      }
-
-      printf("Bond: %i-%i\n",src,dst);
-
-      if (!fail) {
-        printf("Bond - fail: %d\n", static_cast<int>(fail));
-        Bond *bond =
-            mol->getBondBetweenAtoms(amap[src]->getIdx(),amap[dst]->getIdx());
-        if (bond && bond->getBondType() != Bond::ZERO) {
-          // Here we use a single byte bitmap to count duplicates
-          // Low nibble counts src < dst, high nibble for src > dst
-          int seen = bmap[bond];
-          if (src < dst) {
-            if ((seen & 0x0f) == 0x01) {
-              bmap[bond] = seen | 0x02;
-              if ((seen & 0x20) == 0) {
-                bond->setBondType(Bond::DOUBLE);
-              }
-            } else if ((seen & 0x0f) == 0x03) {
-              bmap[bond] = seen | 0x04;
-              if ((seen & 0x40) == 0) {
-                bond->setBondType(Bond::TRIPLE);
-              }
-            } else if ((seen & 0x0f) == 0x07) {
-              bmap[bond] = seen | 0x08;
-              if ((seen & 0x80) == 0) {
-                bond->setBondType(Bond::QUADRUPLE);
-              }
-            }
-          } else /* src < dst */ {
-            if ((seen & 0xf0) == 0x10) {
-              bmap[bond] = seen | 0x20;
-              if ((seen & 0x02) == 0) {
-                bond->setBondType(Bond::DOUBLE);
-              }
-            } else if ((seen & 0xf0) == 0x30) {
-              bmap[bond] = seen | 0x40;
-              if ((seen & 0x04) == 0) {
-                bond->setBondType(Bond::TRIPLE);
-              }
-            } else if ((seen & 0xf0) == 0x70) {
-              bmap[bond] = seen | 0x80;
-              if ((seen & 0x08) == 0) {
-                bond->setBondType(Bond::QUADRUPLE);
-              }
-            }
+  for (int i=0; i<rows; i+=1){
+    for (int j=i+1; j<cols; j+=1){
+        if(pairBondType[i][j]=="s"){
+           Bond *bond=mol->getBondBetweenAtoms(amap[i+1]->getIdx(),amap[j+1]->getIdx());
+           bond=new Bond(Bond::SINGLE);
+           bond->setOwningMol(mol);           
+           bond->setBeginAtom(amap[i+1]);
+           bond->setEndAtom(amap[j+1]);
+           mol->addBond(bond,true);
           }
-        } else if (!bond) {
-          // Bonds in PDB file are explicit
-          // if they are not sanitize friendly, set their order to zero
-        printf("Bonds - set ZERO or SINGLE\n");
-          if (IsBlacklistedPair(amap[src], amap[dst])) {
-            bond = new Bond(Bond::ZERO);
-          } else {
-            bond = new Bond(Bond::SINGLE);
+        else if(pairBondType[i][j]=="d"){
+           Bond *bond=mol->getBondBetweenAtoms(amap[i+1]->getIdx(),amap[j+1]->getIdx());
+           bond=new Bond(Bond::DOUBLE);
+           bond->setOwningMol(mol);           
+           bond->setBeginAtom(amap[i+1]);
+           bond->setEndAtom(amap[j+1]);
+           mol->addBond(bond,true);
           }
-          bond->setOwningMol(mol);
-          bond->setBeginAtom(amap[src]);
-          bond->setEndAtom(amap[dst]);
-          mol->addBond(bond, true);
-          bmap[bond] = (src < dst) ? 0x01 : 0x10;
-        } else {
-          break;
-        }
-      } else {
-        break;
+        else if(pairBondType[i][j]=="t"){
+           Bond *bond=mol->getBondBetweenAtoms(amap[i+1]->getIdx(),amap[j+1]->getIdx());
+           bond=new Bond(Bond::TRIPLE);
+           bond->setOwningMol(mol);           
+           bond->setBeginAtom(amap[i+1]);
+           bond->setEndAtom(amap[j+1]);
+           mol->addBond(bond,true);
+          }
+        else if(pairBondType[i][j]=="a"){
+           Bond *bond=mol->getBondBetweenAtoms(amap[i+1]->getIdx(),amap[j+1]->getIdx());
+           bond=new Bond(Bond::AROMATIC);
+           bond->setOwningMol(mol);           
+           bond->setBeginAtom(amap[i+1]);
+           bond->setEndAtom(amap[j+1]);
+           mol->addBond(bond,true);
+          }
       }
-    }
-  }
-
-  if (fail) {
-    std::ostringstream errout;
-    errout << "Problem with CONECT record for PDB atom #" << tmp;
-    throw FileParseException(errout.str());
   }
 }
 
@@ -457,6 +385,17 @@ void BasicPDBCleanup(RWMol &mol) {
   }
 }
 
+void initPairBondType(){
+
+    /* Initialize the bond type array with "x", i.e. no bond. */
+    
+    for (int i=0; i<rows; ++i) {
+        for (int j=0; j<cols; ++j) {
+            pairBondType[i][j]="x";
+        }
+    }
+}
+
 void parseHINBlock(RWMol *&mol, const char *str, bool sanitize, bool removeHs,
                    unsigned int flavor, bool proximityBonding) {
   PRECONDITION(str, "bad char ptr");
@@ -466,6 +405,8 @@ void parseHINBlock(RWMol *&mol, const char *str, bool sanitize, bool removeHs,
   bool multi_conformer = false;
   int conformer_atmidx = 0;
   Conformer *conf = nullptr;
+
+  initPairBondType();
 
   while (*str) {
     unsigned int len;
@@ -490,7 +431,7 @@ void parseHINBlock(RWMol *&mol, const char *str, bool sanitize, bool removeHs,
       next++;
     }
 
-    // ATOM records
+    // atom records
     if (str[0] == 'a' && str[1] == 't' && str[2] == 'o' && str[3] == 'm' &&
         str[4] == ' ' && str[5] == ' ') {
       if (!multi_conformer) {
@@ -515,6 +456,11 @@ void parseHINBlock(RWMol *&mol, const char *str, bool sanitize, bool removeHs,
       // CONECT records
     } else if (str[0] == 'C' && str[1] == 'O' && str[2] == 'N' &&
                str[3] == 'E' && str[4] == 'C' && str[5] == 'T') {
+      if (mol && !multi_conformer) {
+        PDBBondLine(mol, str, len, amap, bmap);
+      }
+    } else if (str[0] == 'e' && str[1] == 'n' && str[2] == 'd' &&
+               str[3] == 'm' && str[4] == 'o' && str[5] == 'l') {
       if (mol && !multi_conformer) {
         PDBBondLine(mol, str, len, amap, bmap);
       }
@@ -608,13 +554,12 @@ RWMol *HINDataStreamToMol(std::istream *inStream, bool sanitize, bool removeHs,
     buffer += line;
     buffer += '\n';
     auto ptr = line.c_str();
+
+    printf("HIN line: %s\n",ptr);
+
     // Check for END
-
-    printf("HIN: %s\n",ptr);
-
     if (ptr[0] == 'e' && ptr[1] == 'n' && ptr[2] == 'd' && ptr[3] == 'm' && ptr[4] == 'o' && ptr[5] == 'l')
          {
-      printf("Found endmol - breake\n");
       break;
     }
   }
